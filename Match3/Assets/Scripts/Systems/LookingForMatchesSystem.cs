@@ -42,7 +42,7 @@ namespace Match3
                 int countMatched = 0;
                 int r = 0;
                 for (r = 0; r < row.Length; r++) {
-                    var cell = em.GetCellByEntity(row[r]);
+                    var cell = em.GetCellByEntity(row[r]);                    
                     if (cell.color == color) countMatched++;
                     else if (cell.color != color) {
                         if (countMatched >= 2) {
@@ -50,10 +50,8 @@ namespace Match3
                             int matched = countMatched;
                             for (int j = r - 1; countMatched > 0; countMatched--, j--)
                             {
-                                em.AddComponent<Matched>(row[j]);
-                                em.SetComponentData<Matched>(row[j], new Matched {
-                                    count = matched
-                                });
+                                var entity = row[j];
+                                SetMatched(ref entity, matched);                                
                             }
                         }
                         countMatched = 0;
@@ -65,10 +63,8 @@ namespace Match3
                     int matched = countMatched;
                     for (int j = r - 2; countMatched > 0; countMatched--, j--)
                     {
-                        em.AddComponent<Matched>(row[j]);
-                        em.SetComponentData<Matched>(row[j], new Matched {
-                            count = matched
-                        });
+                        var entity = row[j];
+                        SetMatched(ref entity, matched);
                     }
                 }
             }
@@ -92,10 +88,8 @@ namespace Match3
                             int matched = countMatched;
                             for (int j = r - 1; countMatched > 0; countMatched--, j--)
                             {
-                                em.AddComponent<Matched>(column[j]);
-                                em.SetComponentData<Matched>(column[j], new Matched {
-                                    count = matched
-                                });
+                                var entity = column[j];
+                                SetMatched(ref entity, matched);
                             }
                         }
                         countMatched = 0;
@@ -108,10 +102,8 @@ namespace Match3
                     int matched = countMatched;
                     for (int j = r - 2; countMatched > 0; countMatched--, j--)
                     {
-                        em.AddComponent<Matched>(column[j]);
-                        em.SetComponentData<Matched>(column[j], new Matched {
-                            count = matched
-                        });
+                        var entity = column[j];
+                        SetMatched(ref entity, matched);
                     }
                 }
             }
@@ -156,6 +148,26 @@ namespace Match3
             else gameState.state = State.Filling;
 
             SetSingleton<GameState>(gameState);
+        }
+
+        private void SetMatched(ref Entity entity, int countMatched)
+        {
+            var em = EntityManager;
+            if (em.HasComponent<Matched>(entity)){
+                if (em.GetComponentData<Matched>(entity).count < countMatched)
+                {
+                    em.SetComponentData<Matched>(entity, new Matched {
+                        count = countMatched
+                    });
+                }
+            }
+            else
+            {
+                em.AddComponent<Matched>(entity);
+                em.SetComponentData<Matched>(entity, new Matched {
+                    count = countMatched
+                });
+            }            
         }
     }
 }
