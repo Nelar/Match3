@@ -26,6 +26,7 @@ namespace Match3
         Idle,
         Swap,
         LoookingForMatches,
+        Filling,
         Falling,
     }
     public enum Gravity

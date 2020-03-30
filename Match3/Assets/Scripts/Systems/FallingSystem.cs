@@ -13,19 +13,45 @@ namespace Match3
         protected override void OnCreate()
         {
             base.OnCreate();
-            RequireSingletonForUpdate<GameState>();            
+            RequireSingletonForUpdate<GameState>();
         }
 
         protected override void OnUpdate()
         {
             var gameState = GetSingleton<GameState>();
             if (gameState.state != State.Falling) return;
-            var em = EntityManager;
+            var em = EntityManager;            
+            bool hasFalling = false;
+            Entities.WithAll<Falling, Cell>().ForEach((Entity e, ref Cell cell, ref Translation translation) => {
+                hasFalling = true;
+                if (gameState.gravity == Gravity.Down)
+                {
+                    if (translation.Value.y > cell.row)
+                    {
+                        translation.Value.y -= Setting.Instance.speed * Time.DeltaTime;
+                    }
+                    else
+                    {
+                        translation.Value.y = cell.row;
+                        em.RemoveComponent<Falling>(e);
+                    }
+                }
+                else
+                {
+                    if (translation.Value.y < cell.row)
+                    {
+                        translation.Value.y += Setting.Instance.speed * Time.DeltaTime;
+                    }
+                    else
+                    {
+                        translation.Value.y = cell.row;
+                        em.RemoveComponent<Falling>(e);
+                    }
+                }                
+            });
 
-            var empties = Entities.GetEmptyEntities();            
-            foreach (var empty in empties)
-            {                
-            }
-        }
+            if (!hasFalling) gameState.state = State.LoookingForMatches;
+            SetSingleton<GameState>(gameState);
+        }            
     }
 }

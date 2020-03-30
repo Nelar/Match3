@@ -9,5 +9,6 @@ namespace Match3
     {
         public State state;
         public Gravity gravity;
+        public bool needChangeGravity;
     }
 }

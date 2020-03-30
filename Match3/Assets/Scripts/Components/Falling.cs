@@ -5,8 +5,7 @@ using Unity.Entities;
 
 namespace Match3
 {
-    public struct Matched : IComponentData
-    {
-        public int count;
+    public struct Falling : IComponentData
+    {        
     }
 }

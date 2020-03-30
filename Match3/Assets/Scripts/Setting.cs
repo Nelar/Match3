@@ -42,6 +42,10 @@ namespace Match3
         public float selectedScale;
         [SerializeField]
         public float normalScale;
+        [SerializeField]
+        public float speed;
+        [SerializeField]
+        public Gravity gravity;
 
         private void Awake()
         {

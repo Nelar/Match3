@@ -9,27 +9,7 @@ using UnityEngine;
 namespace Match3
 {
     public class LookingForMatchesSystem : ComponentSystem
-    {
-        class RowComparer : IComparer<Entity>
-        {
-            EntityManager manager;
-            public RowComparer(EntityManager nManager) => manager = nManager;
-            public int Compare(Entity x, Entity y)
-            {
-                return manager.GetCellByEntity(x).row - manager.GetCellByEntity(y).row;
-            }
-        }
-
-        class ColumnComparer : IComparer<Entity>
-        {
-            EntityManager manager;
-            public ColumnComparer(EntityManager nManager) => manager = nManager;
-            public int Compare(Entity x, Entity y)
-            {
-                return manager.GetCellByEntity(x).column - manager.GetCellByEntity(y).column;
-            }
-        }
-
+    {        
         private ColumnComparer columnComparer;
         private RowComparer rowComparer;
 
@@ -45,8 +25,15 @@ namespace Match3
         {
             var gameState = GetSingleton<GameState>();
             if (gameState.state != State.LoookingForMatches) return;
-            var em = EntityManager;
 
+            if (gameState.needChangeGravity)
+            {
+                gameState.needChangeGravity = false;
+                if (gameState.gravity == Gravity.Down) gameState.gravity = Gravity.Up;
+                else gameState.gravity = Gravity.Down;
+            }
+
+            var em = EntityManager;
             for (int i = 0; i < Setting.Instance.rowCount; i++) {
                 var row = Entities.GetCellEntitiesByRow(i);
                 row.Sort(columnComparer);
@@ -60,9 +47,13 @@ namespace Match3
                     else if (cell.color != color) {
                         if (countMatched >= 2) {
                             countMatched++;
+                            int matched = countMatched;
                             for (int j = r - 1; countMatched > 0; countMatched--, j--)
                             {
                                 em.AddComponent<Matched>(row[j]);
+                                em.SetComponentData<Matched>(row[j], new Matched {
+                                    count = matched
+                                });
                             }
                         }
                         countMatched = 0;
@@ -71,9 +62,13 @@ namespace Match3
                 }
                 if (countMatched >= 2) {
                     countMatched++;
+                    int matched = countMatched;
                     for (int j = r - 2; countMatched > 0; countMatched--, j--)
                     {
                         em.AddComponent<Matched>(row[j]);
+                        em.SetComponentData<Matched>(row[j], new Matched {
+                            count = matched
+                        });
                     }
                 }
             }
@@ -94,9 +89,13 @@ namespace Match3
                         if (countMatched >= 2)
                         {
                             countMatched++;
+                            int matched = countMatched;
                             for (int j = r - 1; countMatched > 0; countMatched--, j--)
                             {
                                 em.AddComponent<Matched>(column[j]);
+                                em.SetComponentData<Matched>(column[j], new Matched {
+                                    count = matched
+                                });
                             }
                         }
                         countMatched = 0;
@@ -106,27 +105,55 @@ namespace Match3
                 if (countMatched >= 2)
                 {
                     countMatched++;
+                    int matched = countMatched;
                     for (int j = r - 2; countMatched > 0; countMatched--, j--)
                     {
                         em.AddComponent<Matched>(column[j]);
+                        em.SetComponentData<Matched>(column[j], new Matched {
+                            count = matched
+                        });
                     }
                 }
             }
 
             bool setIdle = true;
-            Entities.WithAll<Matched>().ForEach((Entity entity) => {
-                var cell = em.GetCellByEntity(entity);
-                var empty = em.CreateEntity(typeof(Empty));
-                em.SetComponentData<Empty>(empty, new Empty {
-                    column = cell.column,
-                    row = cell.row
-                });
-                setIdle = false;
-                em.DestroyEntity(entity);
+
+            Entities.WithAll<Matched>().ForEach((Entity entity, ref Matched matched, ref Cell cell) => {
+                if (matched.count >= 4 && em.HasComponent<Selected>(entity)) {
+                    cell.type = Type.Gravity;
+                    em.RemoveComponent<Matched>(entity);
+                    var renderMesh = em.GetSharedComponentData<RenderMesh>(entity);
+                    em.SetSharedComponentData<RenderMesh>(entity, new RenderMesh {
+                        mesh = renderMesh.mesh,
+                        layer = 0,
+                        castShadows = UnityEngine.Rendering.ShadowCastingMode.Off,
+                        receiveShadows = false,
+                        needMotionVectorPass = false,
+                        material = SystemsHelper.TextureByCell(cell)
+                    });
+                }
+                else
+                {
+                    if (cell.type == Type.Gravity) gameState.needChangeGravity = !gameState.needChangeGravity;
+                    var empty = em.CreateEntity(typeof(Empty));
+                    em.SetComponentData<Empty>(empty, new Empty {
+                        column = cell.column,
+                        row = cell.row
+                    });
+                    setIdle = false;
+                    em.DestroyEntity(entity);
+                }                
             });
 
-            if (setIdle) gameState.state = State.Idle;
-            else gameState.state = State.Falling;
+            Entities.WithAll<Selected>().ForEach((Entity entity) => {
+                em.RemoveComponent<Selected>(entity);
+            });
+
+            if (setIdle)
+            {
+                gameState.state = State.Idle;                
+            }
+            else gameState.state = State.Filling;
 
             SetSingleton<GameState>(gameState);
         }
